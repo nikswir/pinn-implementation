@@ -8,8 +8,7 @@ This is an **educational example built on Numba**, not production code: a
 reverse-mode autograd `Tensor` (with the higher-order derivatives a PINN needs),
 a hand-written GPU memory allocator, and hand-written CUDA kernels (tiled matmul,
 reductions, elementwise), assembled into an MLP that learns the solution of a PDE
-from its residual alone. For real work, use PyTorch or JAX — the point here is to
-see how the pieces work.
+from its residual alone.
 
 ## The problem
 
@@ -29,9 +28,18 @@ Trained for 2000 epochs on CPU (≈10 s), the PINN matches the analytic solution
 to a **maximum absolute error of ≈0.01** at $t=1$.
 
 
-| PINN vs analytic ($t=1$) | Absolute error | Training loss |
-| ------------------------ | -------------- | ------------- |
-| ![PINN vs analytic](docs/report/figures/comparison_t1.png) | ![Absolute error](docs/report/figures/error_field.png) | ![Training loss](docs/report/figures/loss_curve.png) |
+<table>
+  <tr>
+    <th>PINN vs analytic (t=1)</th>
+    <th>Absolute error</th>
+    <th>Training loss</th>
+  </tr>
+  <tr>
+    <td><img src="docs/report/figures/comparison_t1.png" width="280"></td>
+    <td><img src="docs/report/figures/error_field.png" width="280"></td>
+    <td><img src="docs/report/figures/loss_curve.png" width="280"></td>
+  </tr>
+</table>
 
 
 Regenerate with `poetry run python scripts/make_figures.py`.
