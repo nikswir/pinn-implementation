@@ -55,18 +55,24 @@ def empty(shape) -> np.ndarray:
 
 # --- array creation ---------------------------------------------------------
 
+def coerce(value) -> np.ndarray:
+    """Coerce a scalar / 1-D / 2-D value into a plain (unpooled) 2-D float32
+    NumPy array. Shared with the CUDA backend for host-to-device copies."""
+    if isinstance(value, (int | float)):
+        return np.array([[value]], dtype=DTYPE)
+    arr = np.asarray(value, dtype=DTYPE)
+    if arr.ndim == 0:
+        return arr.reshape(1, 1)
+    if arr.ndim == 1:
+        return arr.reshape(1, -1)
+    if arr.ndim == 2:
+        return arr
+    raise ValueError(f"expected <=2 dims, got shape {arr.shape}")
+
+
 def asarray(value) -> np.ndarray:
     """Coerce a scalar / 1-D / 2-D value into a pooled 2-D float32 array."""
-    if isinstance(value, (int | float)):
-        arr = np.array([[value]], dtype=DTYPE)
-    else:
-        arr = np.asarray(value, dtype=DTYPE)
-        if arr.ndim == 0:
-            arr = arr.reshape(1, 1)
-        elif arr.ndim == 1:
-            arr = arr.reshape(1, -1)
-        elif arr.ndim != 2:
-            raise ValueError(f"expected <=2 dims, got shape {arr.shape}")
+    arr = coerce(value)
     out = empty(arr.shape)
     out[...] = arr
     return out

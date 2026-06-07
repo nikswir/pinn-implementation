@@ -57,3 +57,23 @@ def test_autograd_on_gpu(cuda_backend):
     g = grad((t.sin() * (t**2)).sum(), t).numpy()
     expected = np.cos(x) * x**2 + 2 * x * np.sin(x)
     assert np.allclose(g, expected, atol=1e-3)
+
+
+def test_cuda_backend_allocates_from_pool_and_releases(cuda_backend):
+    """The CUDA backend draws device memory from the pool and returns it on GC."""
+    import gc
+
+    from pinn.core.tensor import Tensor
+
+    p = cuda_backend.pool()
+    gc.collect()
+    base = p.used
+
+    a = Tensor(np.random.randn(64, 64))
+    b = Tensor(np.random.randn(64, 64))
+    c = a @ b
+    assert p.used > base  # the result was allocated from the device pool
+
+    del a, b, c
+    gc.collect()
+    assert p.used == base  # everything returned to the pool

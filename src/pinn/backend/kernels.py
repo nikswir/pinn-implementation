@@ -62,6 +62,13 @@ def transpose_kernel(out, a):
         out[j, i] = a[i, j]
 
 
+@cuda.jit
+def fill_kernel(out, value):
+    i, j = cuda.grid(2)
+    if i < out.shape[0] and j < out.shape[1]:
+        out[i, j] = value
+
+
 # --- elementwise binary (with broadcasting) ---------------------------------
 
 

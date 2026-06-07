@@ -26,9 +26,12 @@ DTYPE = np.float32
 
 
 class MemoryManager:
-    def __init__(self, capacity: int):
+    def __init__(self, capacity: int, buffer=None):
+        # The allocator only tracks offsets; the backing storage is provided
+        # externally (a device buffer for the CUDA backend) or defaults to a
+        # NumPy buffer for the CPU backend.
         self.capacity = capacity
-        self.buffer = np.zeros(capacity, dtype=DTYPE)
+        self.buffer = np.zeros(capacity, dtype=DTYPE) if buffer is None else buffer
         self.gap_at_start: dict[int, int] = {0: capacity}
         self.gap_at_end: dict[int, int] = {capacity: capacity}
         self.gaps_by_size: list[tuple[int, int]] = [(capacity, 0)]
