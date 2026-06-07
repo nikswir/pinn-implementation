@@ -5,57 +5,127 @@
 > solve a 2-D heat equation with a Physics-Informed Neural Network (PINN).
 
 This is **not** an attempt to compete with PyTorch or cuBLAS. It is a teaching
-implementation: a reverse-mode autograd `tensor`, a hand-written GPU memory
-allocator, and hand-written CUDA kernels (matmul, reductions, elementwise),
-assembled into an MLP that learns the solution of a PDE from its residual alone.
-A short [`Production perspective`](#production-perspective) section documents
-exactly where this sits relative to the modern stack and why production looks
-different.
+implementation: a reverse-mode autograd `Tensor` (with the higher-order
+derivatives a PINN needs), a hand-written GPU memory allocator, and hand-written
+CUDA kernels (tiled matmul, reductions, elementwise), assembled into an MLP that
+learns the solution of a PDE from its residual alone. The
+[Production perspective](#production-perspective) section documents exactly where
+this sits relative to the modern stack and why production looks different.
 
 ## The problem
 
 2-D heat equation with a source term:
 
-```
-∂u/∂t = Δu + x·t²·sin(y),   0 < x < 1,   0 < y < π/2,   t > 0
-∂u/∂x|_{x=0} = ∂u/∂x|_{x=1} = 0        (Neumann)
-u|_{y=0} = 0,   ∂u/∂y|_{y=π/2} = 0      (Dirichlet / Neumann)
-u|_{t=0} = 0                            (initial condition)
-```
+$$\frac{\partial u}{\partial t} = \Delta u + x\,t^2 \sin y,\quad 0<x<1,\ 0<y<\tfrac{\pi}{2},\ t>0$$
 
-The PINN minimizes the PDE residual plus the boundary/initial residuals, with no
-labelled data. Results are validated against a closed-form Fourier-series
-solution.
+$$\frac{\partial u}{\partial x}\Big|_{x=0}=\frac{\partial u}{\partial x}\Big|_{x=1}=0,\qquad u\big|_{y=0}=0,\quad \frac{\partial u}{\partial y}\Big|_{y=\pi/2}=0,\qquad u\big|_{t=0}=0$$
 
-## Status
+The network $u_\theta(x,y,t)$ is trained to minimize the mean-squared PDE
+residual plus the boundary and initial residuals — no labelled data. The result
+is validated against a closed-form Fourier-series solution.
 
-🚧 Work in progress.
+## Results
+
+Trained for 2000 epochs on CPU (≈10 s), the PINN matches the analytic solution
+to a **maximum absolute error of ≈0.01** at $t=1$.
+
+| PINN vs analytic ($t=1$) | Absolute error | Training loss |
+|:---:|:---:|:---:|
+| ![comparison](docs/report/figures/comparison_t1.png) | ![error](docs/report/figures/error_field.png) | ![loss](docs/report/figures/loss_curve.png) |
+
+Regenerate with `poetry run python scripts/make_figures.py`.
+
+## How it works
+
+Four layers of abstraction, each built from the one below:
+
+1. **Compute backend** — array primitives (matmul, elementwise, reductions).
+   Two interchangeable implementations: pure NumPy (`backend/cpu.py`) and
+   hand-written CUDA kernels (`backend/kernels.py`, `backend/cuda.py`). The
+   matmul kernel is a classic shared-memory **tiled GEMM**.
+2. **Memory allocator** (`backend/memory.py`) — a pooled best-fit allocator over
+   one flat buffer with gap coalescing, so thousands of short-lived tensors don't
+   each pay a device-allocation cost.
+3. **Autograd** (`core/tensor.py`) — reverse-mode AD where the backward functions
+   are themselves `Tensor` operations, so gradients stay differentiable. That is
+   what makes the **second derivatives** $u_{xx}, u_{yy}$ possible.
+4. **Model & PDE** (`nn/`, `pde/`) — Xavier-init MLP, Adam, and the
+   physics-informed loss; plus the analytic reference.
 
 ## Quickstart
 
 ```bash
 poetry install                 # core (CPU) deps
-poetry run pytest              # runs on CPU, no GPU required
+poetry run pytest              # full suite runs on CPU, no GPU required
+poetry run python -m pinn.train --epochs 2000
 ```
+
+Optional extras: `--extras viz` (figures), `--extras reference` (PyTorch
+baseline), `--extras gpu` (CuPy + Triton benchmarks; needs CUDA).
+
+Switch backend in code:
+
+```python
+from pinn import backend
+backend.use("cuda")   # if an NVIDIA GPU is present; defaults to "cpu"
+```
+
+## Testing
+
+The correctness evidence is numerical: every differentiation rule is checked
+against finite differences (`tests/test_autograd.py`), including second-order
+derivatives; the allocator's no-overlap/coalescing invariants are fuzzed; the
+analytic solution is verified to satisfy the PDE/BC/IC; and the full PINN is
+trained to convergence. CUDA kernels are checked for parity against the NumPy
+backend, auto-skipped when no GPU is present.
 
 ## Layout
 
 ```
-src/pinn/backend/   CPU (NumPy) and CUDA (Numba) compute backends + GPU allocator
-src/pinn/core/      reverse-mode autograd tensor
-src/pinn/nn/        Linear, activations, MLP, Adam
+src/pinn/backend/   CPU (NumPy) and CUDA (Numba) backends + pooled GPU allocator
+src/pinn/core/      reverse-mode autograd Tensor
+src/pinn/nn/        Linear, Sigmoid, MLP, Adam
 src/pinn/pde/       heat-equation PINN loss + analytic reference
-tests/              gradient checks, kernel/allocator/accuracy tests
-examples/           runnable demo + a compact PyTorch reference
+src/pinn/train.py   training loop + evaluation
+tests/              gradient checks, allocator, analytic, convergence, CUDA parity
+examples/           PyTorch reference implementation
 benchmarks/         matmul: hand-written Numba vs CuPy/cuBLAS vs Triton vs NumPy
+scripts/            figure generation
 docs/report/        LaTeX report (RU + EN translation)
 ```
 
 ## Production perspective
 
-_(to be written — the honest map: cuBLAS/cuDNN/Triton/CUTLASS, the thread-vs-tile
-programming model, and why this is slower than PyTorch — orchestration and tiny
-matrices, not the kernel language.)_
+This project hand-writes things that, in production, you almost never write
+yourself. That is the point — it is how you learn what the abstractions do. For
+the record, here is the honest map.
+
+**The stack.** Deep-learning frameworks don't hand-roll matmul; they call vendor
+libraries:
+
+| Layer | Tool | Role |
+|---|---|---|
+| Vendor GEMM/conv | cuBLAS, cuDNN | what PyTorch/TF call under the hood; hand-tuned, use Tensor Cores |
+| GEMM templates | CUTLASS | building blocks for custom high-performance kernels |
+| Low level | CUDA C++ | maximum control; libraries and the hottest kernels |
+| Kernel DSL | **Triton** | the modern default for custom *fused* kernels (Python, block-level) |
+| Frameworks | PyTorch, JAX | orchestrate the above; `torch.compile` emits Triton |
+| This repo | Numba `@cuda.jit` | real GPU kernels, but a teaching/scientific tool |
+
+**Thread model vs tile model.** The Numba kernel here is written from the point
+of view of a single *thread* — explicit `threadIdx`, shared-memory tiles,
+`syncthreads`. Triton (`benchmarks/triton_matmul.py`) is written from the point
+of view of a single *block*: you operate on whole tiles (`tl.load`, `tl.dot`)
+and the compiler generates the thread choreography. Numba is more transparent
+about the mechanics; Triton is more productive and hits near-cuBLAS performance.
+
+**Why a from-scratch PINN is slower than PyTorch — and what actually matters.**
+It is *not* the kernel language. At the matrix sizes used here (≤ a few hundred),
+the GPU is latency-bound, so even cuBLAS wouldn't help much. The real cost is
+**orchestration**: thousands of tiny kernel launches per epoch driven from
+Python, and a Python-object autograd graph. PyTorch is fast because its dispatch
+and graph live in C++ and it fuses ops. The lesson — diagnose the bottleneck
+(orchestration and problem size) before reaching for a faster kernel language.
 
 ## License
 
