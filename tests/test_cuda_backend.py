@@ -54,6 +54,6 @@ def test_autograd_on_gpu(cuda_backend):
     rng = np.random.default_rng(1)
     x = rng.standard_normal((4, 3)).astype(np.float32)
     t = Tensor(x, requires_grad=True)
-    g = grad((t.sin() * (t ** 2)).sum(), t).numpy()
+    g = grad((t.sin() * (t**2)).sum(), t).numpy()
     expected = np.cos(x) * x**2 + 2 * x * np.sin(x)
     assert np.allclose(g, expected, atol=1e-3)

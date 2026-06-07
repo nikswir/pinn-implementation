@@ -18,6 +18,7 @@ name = "cpu"
 
 # --- array creation ---------------------------------------------------------
 
+
 def asarray(value) -> np.ndarray:
     """Coerce a Python scalar / 1-D / 2-D value into a 2-D float32 array."""
     if isinstance(value, (int | float)):
@@ -45,6 +46,7 @@ def to_numpy(a: np.ndarray) -> np.ndarray:
 
 
 # --- elementwise (NumPy broadcasting) ---------------------------------------
+
 
 def add(a, b):
     return (a + b).astype(DTYPE)
@@ -87,6 +89,7 @@ def sigmoid(a):
 
 
 # --- linear algebra / reductions --------------------------------------------
+
 
 def matmul(a, b):
     return (a @ b).astype(DTYPE)

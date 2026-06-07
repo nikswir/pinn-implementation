@@ -26,6 +26,7 @@ TPB = 16  # threads per block (one tile dimension)
 
 # --- matmul (tiled) ---------------------------------------------------------
 
+
 @cuda.jit
 def matmul_kernel(C, A, B):
     sA = cuda.shared.array(shape=(TPB, TPB), dtype=float32)
@@ -63,6 +64,7 @@ def transpose_kernel(out, a):
 
 # --- elementwise binary (with broadcasting) ---------------------------------
 
+
 @cuda.jit
 def add_kernel(out, a, b):
     i, j = cuda.grid(2)
@@ -97,6 +99,7 @@ def div_kernel(out, a, b):
 
 
 # --- elementwise unary ------------------------------------------------------
+
 
 @cuda.jit
 def pow_scalar_kernel(out, a, p):
@@ -148,6 +151,7 @@ def sigmoid_kernel(out, a):
 
 
 # --- reductions -------------------------------------------------------------
+
 
 @cuda.jit
 def sum_all_kernel(out, a):

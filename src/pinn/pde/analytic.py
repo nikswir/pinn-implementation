@@ -46,8 +46,7 @@ def u_exact_scalar(x: float, y: float, t: float, n_terms: int = 4) -> float:
 
 def u_exact(x, y, t, n_terms: int = 4) -> np.ndarray:
     """Vectorized analytic solution over arrays of points (broadcast together)."""
-    x, y, t = np.broadcast_arrays(np.asarray(x, float), np.asarray(y, float),
-                                  np.asarray(t, float))
+    x, y, t = np.broadcast_arrays(np.asarray(x, float), np.asarray(y, float), np.asarray(t, float))
     out = (-np.exp(-t) + t**2 / 2.0 - t + 1.0) * np.sin(y)
     for i in range(n_terms):
         n = 2 * i + 1

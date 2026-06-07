@@ -116,10 +116,10 @@ class Tensor:
 
     def __truediv__(self, other) -> Tensor:
         other = self._ensure(other)
-        return self * (other ** -1)
+        return self * (other**-1)
 
     def __rtruediv__(self, other) -> Tensor:
-        return self._ensure(other) * (self ** -1)
+        return self._ensure(other) * (self**-1)
 
     def __neg__(self) -> Tensor:
         return self * -1.0
@@ -171,7 +171,7 @@ class Tensor:
     def ln(self) -> Tensor:
         out = Tensor._wrap(_b().log(self.data), parents=[], requires_grad=self.requires_grad)
         if self.requires_grad:
-            out._parents.append((self, lambda g: g * (self ** -1)))
+            out._parents.append((self, lambda g: g * (self**-1)))
         return out
 
     def sigmoid(self) -> Tensor:
@@ -217,6 +217,7 @@ class Tensor:
 
 # --- broadcasting helper ----------------------------------------------------
 
+
 def _unbroadcast(grad: Tensor, shape: tuple[int, int]) -> Tensor:
     """Sum ``grad`` over dimensions that were broadcast to match ``shape``."""
     if grad.shape == shape:
@@ -229,6 +230,7 @@ def _unbroadcast(grad: Tensor, shape: tuple[int, int]) -> Tensor:
 
 
 # --- gradient computation ---------------------------------------------------
+
 
 def _topo(output: Tensor) -> list[Tensor]:
     order: list[Tensor] = []

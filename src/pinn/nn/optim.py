@@ -14,8 +14,14 @@ from pinn.core.tensor import Tensor
 
 
 class Adam:
-    def __init__(self, params: list[Tensor], lr: float = 1e-2,
-                 beta1: float = 0.9, beta2: float = 0.999, eps: float = 1e-8):
+    def __init__(
+        self,
+        params: list[Tensor],
+        lr: float = 1e-2,
+        beta1: float = 0.9,
+        beta2: float = 0.999,
+        eps: float = 1e-8,
+    ):
         self.params = list(params)
         self.lr = lr
         self.b1 = beta1
@@ -27,8 +33,8 @@ class Adam:
 
     def step(self, grads: list[Tensor]) -> None:
         self.t += 1
-        bc1 = 1.0 - self.b1 ** self.t
-        bc2 = 1.0 - self.b2 ** self.t
+        bc1 = 1.0 - self.b1**self.t
+        bc2 = 1.0 - self.b2**self.t
         for i, (p, g) in enumerate(zip(self.params, grads, strict=True)):
             if g is None:
                 continue

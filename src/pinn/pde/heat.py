@@ -29,8 +29,9 @@ PI_2 = math.pi / 2.0
 class HeatPINN:
     """Loss assembler for the heat-equation PINN on (0,1) x (0,pi/2) x (0,1)."""
 
-    def __init__(self, model, rng: np.random.Generator | None = None,
-                 n_pde: int = 200, n_bc: int = 50):
+    def __init__(
+        self, model, rng: np.random.Generator | None = None, n_pde: int = 200, n_bc: int = 50
+    ):
         self.model = model
         self.rng = rng or np.random.default_rng()
         self.n_pde = n_pde

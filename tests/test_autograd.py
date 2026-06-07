@@ -67,6 +67,7 @@ def test_unary_functions(rng):
     x = rng.uniform(0.2, 1.5, size=(2, 5)).astype(np.float32)
 
     for fn_name in ("sin", "cos", "ln", "sigmoid"):
+
         def f(a, fn_name=fn_name):
             t = Tensor(a, requires_grad=True)
             return getattr(t, fn_name)().sum().item()

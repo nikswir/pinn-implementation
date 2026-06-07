@@ -24,6 +24,7 @@ name = "cuda"
 
 # --- launch configuration ---------------------------------------------------
 
+
 def _grid(rows: int, cols: int):
     bx = (rows + TPB[0] - 1) // TPB[0]
     by = (cols + TPB[1] - 1) // TPB[1]
@@ -35,6 +36,7 @@ def _empty(shape):
 
 
 # --- array creation ---------------------------------------------------------
+
 
 def asarray(value):
     if cuda.is_cuda_array(value):
@@ -57,6 +59,7 @@ def to_numpy(a) -> np.ndarray:
 
 # --- helpers ----------------------------------------------------------------
 
+
 def _broadcast_shape(a, b):
     return (max(a.shape[0], b.shape[0]), max(a.shape[1], b.shape[1]))
 
@@ -77,6 +80,7 @@ def _binary(kernel, a, b):
 
 
 # --- elementwise ------------------------------------------------------------
+
 
 def add(a, b):
     return _binary(kernels.add_kernel, a, b)
@@ -122,6 +126,7 @@ def sigmoid(a):
 
 
 # --- linear algebra / reductions --------------------------------------------
+
 
 def matmul(a, b):
     m, n = a.shape[0], b.shape[1]
