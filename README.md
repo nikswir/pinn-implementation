@@ -4,13 +4,12 @@
 > (NumPy + Numba/CUDA) to **understand what lives under PyTorch** — then used to
 > solve a 2-D heat equation with a Physics-Informed Neural Network (PINN).
 
-This is **not** an attempt to compete with PyTorch or cuBLAS. It is a teaching
-implementation: a reverse-mode autograd `Tensor` (with the higher-order
-derivatives a PINN needs), a hand-written GPU memory allocator, and hand-written
-CUDA kernels (tiled matmul, reductions, elementwise), assembled into an MLP that
-learns the solution of a PDE from its residual alone. The
-[Production perspective](#production-perspective) section documents exactly where
-this sits relative to the modern stack and why production looks different.
+This is an **educational example built on Numba**, not production code: a
+reverse-mode autograd `Tensor` (with the higher-order derivatives a PINN needs),
+a hand-written GPU memory allocator, and hand-written CUDA kernels (tiled matmul,
+reductions, elementwise), assembled into an MLP that learns the solution of a PDE
+from its residual alone. For real work, use PyTorch or JAX — the point here is to
+see how the pieces work.
 
 ## The problem
 
@@ -93,38 +92,12 @@ scripts/            figure generation
 docs/report/        LaTeX report (RU + EN translation)
 ```
 
-## Production perspective
+## Scope
 
-This project hand-writes things that, in production, you almost never write
-yourself. That is the point — it is how you learn what the abstractions do. For
-the record, here is the honest map.
-
-**The stack.** Deep-learning frameworks don't hand-roll matmul; they call vendor
-libraries:
-
-| Layer | Tool | Role |
-|---|---|---|
-| Vendor GEMM/conv | cuBLAS, cuDNN | what PyTorch/TF call under the hood; hand-tuned, use Tensor Cores |
-| GEMM templates | CUTLASS | building blocks for custom high-performance kernels |
-| Low level | CUDA C++ | maximum control; libraries and the hottest kernels |
-| Kernel DSL | **Triton** | the modern default for custom *fused* kernels (Python, block-level) |
-| Frameworks | PyTorch, JAX | orchestrate the above; `torch.compile` emits Triton |
-| This repo | Numba `@cuda.jit` | real GPU kernels, but a teaching/scientific tool |
-
-**Thread model vs tile model.** The Numba kernel here is written from the point
-of view of a single *thread* — explicit `threadIdx`, shared-memory tiles,
-`syncthreads`. Triton, by contrast, is written from the point of view of a single
-*block*: you operate on whole tiles (`tl.load`, `tl.dot`) and the compiler
-generates the thread choreography. Numba is more transparent about the mechanics;
-Triton is more productive and hits near-cuBLAS performance.
-
-**Why a from-scratch PINN is slower than PyTorch — and what actually matters.**
-It is *not* the kernel language. At the matrix sizes used here (≤ a few hundred),
-the GPU is latency-bound, so even cuBLAS wouldn't help much. The real cost is
-**orchestration**: thousands of tiny kernel launches per epoch driven from
-Python, and a Python-object autograd graph. PyTorch is fast because its dispatch
-and graph live in C++ and it fuses ops. The lesson — diagnose the bottleneck
-(orchestration and problem size) before reaching for a faster kernel language.
+An educational example built on Numba — not production code. Everything here
+(autograd, the GPU allocator, the CUDA kernels) is hand-written to show how it
+works, not to be fast or complete. For real numerical or deep-learning work, use
+an established framework (PyTorch, JAX).
 
 ## License
 
