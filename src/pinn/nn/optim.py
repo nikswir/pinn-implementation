@@ -1,14 +1,9 @@
 """Adam optimizer.
 
 Operates directly on the raw backend arrays behind each parameter (no graph is
-built during the update step).
-
-Fixes relative to the original coursework implementation:
-
-- **Bias correction** of the first/second moments (``m_hat``, ``v_hat``) is
-  applied — the original omitted it, which biases early updates toward zero.
-- ``eps`` is added *outside* the square root (``sqrt(v_hat) + eps``), matching
-  the canonical Adam; the original had ``sqrt(v + eps)``.
+built during the update step). Implements canonical Adam: exponential moving
+averages of the gradient and its square, bias-corrected (``m_hat``, ``v_hat``),
+with ``eps`` added outside the square root (``sqrt(v_hat) + eps``).
 """
 
 from __future__ import annotations

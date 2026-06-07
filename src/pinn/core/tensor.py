@@ -250,8 +250,7 @@ def grad(output: Tensor, inputs, grad_output: Tensor | None = None, create_graph
     """Return d(output)/d(input) for each tensor in ``inputs`` as ``Tensor``.
 
     Gradients incoming to a node are summed *before* propagating further (proper
-    reverse-mode accumulation), which avoids the exponential re-traversal of the
-    original notebook implementation. With ``create_graph=True`` the returned
+    reverse-mode accumulation). With ``create_graph=True`` the returned
     gradients stay attached to the graph, enabling second-order derivatives.
     """
     single = isinstance(inputs, Tensor)

@@ -1,8 +1,7 @@
 """Neural-network building blocks: a linear layer, sigmoid activation, and MLP.
 
-Weights use Xavier-style initialization ``N(0, 1/in_features)`` as in the
-original coursework. Layers expose :meth:`parameters` so an optimizer can
-collect every trainable tensor.
+Weights use Xavier-style initialization ``N(0, 1/in_features)``. Layers expose
+:meth:`parameters` so an optimizer can collect every trainable tensor.
 """
 
 from __future__ import annotations
@@ -38,7 +37,7 @@ class Sigmoid:
 class MLP:
     """Multilayer perceptron: 4 linear layers with sigmoid activations.
 
-    Architecture matches the report: ``in -> 32 -> 32 -> 32 -> out``.
+    Architecture: ``in -> 32 -> 32 -> 32 -> out``.
     """
 
     def __init__(self, in_features: int, out_features: int, hidden: int = 32,

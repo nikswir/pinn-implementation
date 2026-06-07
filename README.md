@@ -29,8 +29,7 @@ solution.
 
 ## Status
 
-🚧 Work in progress — migrating from a single research notebook
-([`legacy/`](legacy/)) into a tested, modular package.
+🚧 Work in progress.
 
 ## Quickstart
 
@@ -49,8 +48,7 @@ src/pinn/pde/       heat-equation PINN loss + analytic reference
 tests/              gradient checks, kernel/allocator/accuracy tests
 examples/           runnable demo + a compact PyTorch reference
 benchmarks/         matmul: hand-written Numba vs CuPy/cuBLAS vs Triton vs NumPy
-docs/report/        LaTeX report (RU original + EN translation)
-legacy/             the original coursework notebook & PDF, kept for provenance
+docs/report/        LaTeX report (RU + EN translation)
 ```
 
 ## Production perspective
