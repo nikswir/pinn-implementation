@@ -15,7 +15,7 @@ see how the pieces work.
 
 2-D heat equation with a source term:
 
-$$\frac{\partial u}{\partial t} = \Delta u + x\,t^2 \sin y,\quad 0<x<1,\ 0<y<\tfrac{\pi}{2},\ t>0$$
+$$\frac{\partial u}{\partial t} = \Delta u + xt^2 \sin y,\quad 0<x<1,\ 0<y<\tfrac{\pi}{2},\ t>0$$
 
 $$\frac{\partial u}{\partial x}\Big|_{x=0}=\frac{\partial u}{\partial x}\Big|_{x=1}=0,\qquad u\big|_{y=0}=0,\quad \frac{\partial u}{\partial y}\Big|_{y=\pi/2}=0,\qquad u\big|_{t=0}=0$$
 
@@ -28,9 +28,11 @@ is validated against a closed-form Fourier-series solution.
 Trained for 2000 epochs on CPU (≈10 s), the PINN matches the analytic solution
 to a **maximum absolute error of ≈0.01** at $t=1$.
 
+
 | PINN vs analytic ($t=1$) | Absolute error | Training loss |
-|:---:|:---:|:---:|
-| ![comparison](docs/report/figures/comparison_t1.png) | ![error](docs/report/figures/error_field.png) | ![loss](docs/report/figures/loss_curve.png) |
+| ------------------------ | -------------- | ------------- |
+| ![PINN vs analytic](docs/report/figures/comparison_t1.png) | ![Absolute error](docs/report/figures/error_field.png) | ![Training loss](docs/report/figures/loss_curve.png) |
+
 
 Regenerate with `poetry run python scripts/make_figures.py`.
 
@@ -39,17 +41,17 @@ Regenerate with `poetry run python scripts/make_figures.py`.
 Four layers of abstraction, each built from the one below:
 
 1. **Compute backend** — array primitives (matmul, elementwise, reductions).
-   Two interchangeable implementations: pure NumPy (`backend/cpu.py`) and
+  Two interchangeable implementations: pure NumPy (`backend/cpu.py`) and
    hand-written CUDA kernels (`backend/kernels.py`, `backend/cuda.py`). The
    matmul kernel is a classic shared-memory **tiled GEMM**.
 2. **Memory allocator** (`backend/memory.py`) — a pooled best-fit allocator over
-   one flat buffer with gap coalescing, so thousands of short-lived tensors don't
+  one flat buffer with gap coalescing, so thousands of short-lived tensors don't
    each pay a device-allocation cost.
 3. **Autograd** (`core/tensor.py`) — reverse-mode AD where the backward functions
-   are themselves `Tensor` operations, so gradients stay differentiable. That is
+  are themselves `Tensor` operations, so gradients stay differentiable. That is
    what makes the **second derivatives** $u_{xx}, u_{yy}$ possible.
 4. **Model & PDE** (`nn/`, `pde/`) — Xavier-init MLP, Adam, and the
-   physics-informed loss; plus the analytic reference.
+  physics-informed loss; plus the analytic reference.
 
 ## Quickstart
 
@@ -91,13 +93,6 @@ examples/           PyTorch reference implementation
 scripts/            figure generation
 docs/report/        LaTeX report (RU + EN translation)
 ```
-
-## Scope
-
-An educational example built on Numba — not production code. Everything here
-(autograd, the GPU allocator, the CUDA kernels) is hand-written to show how it
-works, not to be fast or complete. For real numerical or deep-learning work, use
-an established framework (PyTorch, JAX).
 
 ## License
 
