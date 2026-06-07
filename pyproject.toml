@@ -22,11 +22,6 @@ viz = [
 reference = [
     "torch (>=2.3,<3.0)",
 ]
-# GPU-only comparison stack. Installs only where CUDA is available.
-gpu = [
-    "cupy-cuda12x (>=13.0,<14.0)",
-    "triton (>=3.0,<4.0)",
-]
 
 [tool.poetry]
 packages = [{ include = "pinn", from = "src" }]

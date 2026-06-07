@@ -61,7 +61,7 @@ poetry run python -m pinn.train --epochs 2000
 ```
 
 Optional extras: `--extras viz` (figures), `--extras reference` (PyTorch
-baseline), `--extras gpu` (CuPy + Triton benchmarks; needs CUDA).
+baseline).
 
 Switch backend in code:
 
@@ -89,7 +89,6 @@ src/pinn/pde/       heat-equation PINN loss + analytic reference
 src/pinn/train.py   training loop + evaluation
 tests/              gradient checks, allocator, analytic, convergence, CUDA parity
 examples/           PyTorch reference implementation
-benchmarks/         matmul: hand-written Numba vs CuPy/cuBLAS vs Triton vs NumPy
 scripts/            figure generation
 docs/report/        LaTeX report (RU + EN translation)
 ```
@@ -114,10 +113,10 @@ libraries:
 
 **Thread model vs tile model.** The Numba kernel here is written from the point
 of view of a single *thread* — explicit `threadIdx`, shared-memory tiles,
-`syncthreads`. Triton (`benchmarks/triton_matmul.py`) is written from the point
-of view of a single *block*: you operate on whole tiles (`tl.load`, `tl.dot`)
-and the compiler generates the thread choreography. Numba is more transparent
-about the mechanics; Triton is more productive and hits near-cuBLAS performance.
+`syncthreads`. Triton, by contrast, is written from the point of view of a single
+*block*: you operate on whole tiles (`tl.load`, `tl.dot`) and the compiler
+generates the thread choreography. Numba is more transparent about the mechanics;
+Triton is more productive and hits near-cuBLAS performance.
 
 **Why a from-scratch PINN is slower than PyTorch — and what actually matters.**
 It is *not* the kernel language. At the matrix sizes used here (≤ a few hundred),
