@@ -1,7 +1,7 @@
 # PINN from scratch
 
 > A minimal automatic-differentiation engine and GPU runtime, built from scratch
-> (NumPy + Numba/CUDA) to **understand what lives under PyTorch** — then used to
+> (NumPy + Numba/CUDA) to **understand what's under the hood of PyTorch** — then used to
 > solve a 2-D heat equation with a Physics-Informed Neural Network (PINN).
 
 This is an **educational example built on Numba**, not production code: a

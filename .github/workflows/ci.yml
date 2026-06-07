@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [ "main" ]
 
 jobs:
   test:
@@ -22,8 +23,10 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Lint (ruff)
-        run: poetry run ruff check src/ tests/
+      - name: Lint and Format (ruff)
+        run: |
+          poetry run ruff check src/ tests/
+          poetry run ruff format --check src/ tests/
 
       - name: Test (pytest, CPU)
         run: poetry run pytest -q
