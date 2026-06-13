@@ -157,25 +157,83 @@ def sigmoid_kernel(out, a):
         out[i, j] = 1.0 / (1.0 + math.exp(-a[i, j]))
 
 
-# --- reductions -------------------------------------------------------------
+# --- reductions (shared-memory tree reduction, single block of RED_TPB) -----
+
+RED_TPB = 32
 
 
 @cuda.jit
 def sum_all_kernel(out, a):
-    i, j = cuda.grid(2)
-    if i < a.shape[0] and j < a.shape[1]:
-        cuda.atomic.add(out, (0, 0), a[i, j])
+    tx = cuda.threadIdx.x
+    shared = cuda.shared.array(shape=RED_TPB, dtype=float32)
+
+    rows, cols = a.shape
+    total = rows * cols
+
+    acc = float32(0.0)
+    idx = tx
+    while idx < total:
+        acc += a[idx // cols, idx % cols]
+        idx += RED_TPB
+    shared[tx] = acc
+
+    depth = RED_TPB // 2
+    while depth > 0:
+        cuda.syncthreads()
+        if tx < depth:
+            shared[tx] += shared[tx + depth]
+        depth //= 2
+    if tx == 0:
+        out[0, 0] = shared[0]
 
 
 @cuda.jit
 def sum_axis0_kernel(out, a):
-    i, j = cuda.grid(2)
-    if i < a.shape[0] and j < a.shape[1]:
-        cuda.atomic.add(out, (0, j), a[i, j])
+    """Column sums -> (1, cols): reduce over rows for each column."""
+    tx = cuda.threadIdx.x
+    shared = cuda.shared.array(shape=RED_TPB, dtype=float32)
+    rows, cols = a.shape
+
+    for j in range(cols):
+        acc = float32(0.0)
+        i = tx
+        while i < rows:
+            acc += a[i, j]
+            i += RED_TPB
+        shared[tx] = acc
+
+        depth = RED_TPB // 2
+        while depth > 0:
+            cuda.syncthreads()
+            if tx < depth:
+                shared[tx] += shared[tx + depth]
+            depth //= 2
+        if tx == 0:
+            out[0, j] = shared[0]
+        cuda.syncthreads()
 
 
 @cuda.jit
 def sum_axis1_kernel(out, a):
-    i, j = cuda.grid(2)
-    if i < a.shape[0] and j < a.shape[1]:
-        cuda.atomic.add(out, (i, 0), a[i, j])
+    """Row sums -> (rows, 1): reduce over columns for each row."""
+    tx = cuda.threadIdx.x
+    shared = cuda.shared.array(shape=RED_TPB, dtype=float32)
+    rows, cols = a.shape
+
+    for i in range(rows):
+        acc = float32(0.0)
+        j = tx
+        while j < cols:
+            acc += a[i, j]
+            j += RED_TPB
+        shared[tx] = acc
+
+        depth = RED_TPB // 2
+        while depth > 0:
+            cuda.syncthreads()
+            if tx < depth:
+                shared[tx] += shared[tx + depth]
+            depth //= 2
+        if tx == 0:
+            out[i, 0] = shared[0]
+        cuda.syncthreads()

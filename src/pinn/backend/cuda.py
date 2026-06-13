@@ -171,21 +171,19 @@ def transpose(a):
 
 
 def sum_all(a):
-    out = zeros((1, 1))
-    grid, block = _grid(a.shape[0], a.shape[1])
-    kernels.sum_all_kernel[grid, block](out, a)
+    out = empty((1, 1))
+    kernels.sum_all_kernel[1, kernels.RED_TPB](out, a)
     return out
 
 
 def sum_axis(a, axis):
     if axis == 0:
-        out = zeros((1, a.shape[1]))
+        out = empty((1, a.shape[1]))
         kernel = kernels.sum_axis0_kernel
     elif axis == 1:
-        out = zeros((a.shape[0], 1))
+        out = empty((a.shape[0], 1))
         kernel = kernels.sum_axis1_kernel
     else:
         raise ValueError(f"unsupported sum axis {axis!r}")
-    grid, block = _grid(a.shape[0], a.shape[1])
-    kernel[grid, block](out, a)
+    kernel[1, kernels.RED_TPB](out, a)
     return out
