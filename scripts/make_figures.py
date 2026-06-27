@@ -5,20 +5,21 @@ Outputs (PNG, into docs/report/figures/):
     error_field.png    - absolute error |u_pred - u_exact| at t=1
     loss_curve.png     - training loss vs epoch
 
-Run:  poetry install --extras viz && poetry run python scripts/make_figures.py
+Run:  uv sync --extra viz && uv run python scripts/make_figures.py
 """
 
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-
 import matplotlib
 
 matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt  # noqa: E402
 
-from pinn.train import TrainConfig, evaluate, train  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from pinn.train import train, evaluate, TrainConfig  # noqa: E402
 
 FIG_DIR = Path(__file__).resolve().parent.parent / "docs" / "report" / "figures"
 
@@ -74,7 +75,10 @@ def main() -> None:
 
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     print(f"training {args.epochs} epochs ...")
-    model, history = train(TrainConfig(epochs=args.epochs, seed=args.seed), verbose=False)
+    model, history = train(
+        TrainConfig(epochs=args.epochs, seed=args.seed),
+        verbose=False,
+    )
     X, Y, u_pred, u_ref, max_err = evaluate(model, n=60, t=1.0)
     print(f"max abs error vs analytic at t=1: {max_err:.4f}")
 

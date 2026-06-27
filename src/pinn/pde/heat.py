@@ -21,7 +21,9 @@ import math
 
 import numpy as np
 
-from pinn.core.tensor import Tensor, grad
+from collections.abc import Callable
+
+from pinn.core.tensor import grad, Tensor
 
 PI_2 = math.pi / 2.0
 
@@ -30,14 +32,20 @@ class HeatPINN:
     """Loss assembler for the heat-equation PINN on (0,1) x (0,pi/2) x (0,1)."""
 
     def __init__(
-        self, model, rng: np.random.Generator | None = None, n_pde: int = 200, n_bc: int = 50
-    ):
+        self,
+        model: Callable[[Tensor], Tensor],
+        rng: np.random.Generator | None = None,
+        n_pde: int = 200,
+        n_bc: int = 50,
+    ) -> None:
         self.model = model
         self.rng = rng or np.random.default_rng()
         self.n_pde = n_pde
         self.n_bc = n_bc
 
-    # -- residual terms -------------------------------------------------------
+    ########################################
+    #            residual terms            #
+    ########################################
 
     def pde_loss(self) -> Tensor:
         x = self.rng.uniform(size=(self.n_pde, 1))
@@ -56,8 +64,13 @@ class HeatPINN:
         residual = u_t - u_xx - u_yy - source
         return (residual**2).sum() * (1.0 / self.n_pde)
 
-    def _neumann_loss(self, *, x: float | None = None, y: float | None = None) -> Tensor:
-        """MSE of the outward normal derivative on a face (x=const or y=const)."""
+    def _neumann_loss(
+        self,
+        *,
+        x: float | None = None,
+        y: float | None = None,
+    ) -> Tensor:
+        """MSE of the outward normal derivative on a face (x or y const)."""
         t = self.rng.uniform(size=(self.n_bc, 1))
         if x is not None:
             xc = np.full((self.n_bc, 1), x)
@@ -90,7 +103,9 @@ class HeatPINN:
         u = self.model(xyt)
         return (u**2).sum() * (1.0 / self.n_bc)
 
-    # -- total ----------------------------------------------------------------
+    ########################################
+    #                total                 #
+    ########################################
 
     def total_loss(self) -> Tensor:
         return (

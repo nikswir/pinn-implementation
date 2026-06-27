@@ -1,20 +1,21 @@
 """Training loop for the heat-equation PINN.
 
 Usage:
-    poetry run python -m pinn.train --epochs 2000
+    uv run python -m pinn.train --epochs 2000
 """
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
-
 import numpy as np
 
-from pinn.core.tensor import Tensor, grad
+from dataclasses import dataclass
+from collections.abc import Callable
+
 from pinn.nn import MLP, Adam
 from pinn.pde.analytic import u_exact
 from pinn.pde.heat import PI_2, HeatPINN
+from pinn.core.tensor import grad, Tensor
 
 
 @dataclass
@@ -28,7 +29,10 @@ class TrainConfig:
     log_every: int = 100
 
 
-def train(cfg: TrainConfig | None = None, verbose: bool = True):
+def train(
+    cfg: TrainConfig | None = None,
+    verbose: bool = True,
+) -> tuple[MLP, list[float]]:
     """Train an MLP to solve the heat PDE; return (model, loss_history)."""
     cfg = cfg or TrainConfig()
     rng = np.random.default_rng(cfg.seed)
@@ -48,7 +52,12 @@ def train(cfg: TrainConfig | None = None, verbose: bool = True):
     return model, history
 
 
-def evaluate(model, n: int = 50, t: float = 1.0, n_terms: int = 4):
+def evaluate(
+    model: Callable[[Tensor], Tensor],
+    n: int = 50,
+    t: float = 1.0,
+    n_terms: int = 4,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
     """Return (X, Y, u_pred, u_exact, max_abs_error) on a grid at fixed t."""
     xs = np.linspace(0.0, 1.0, n)
     ys = np.linspace(0.0, PI_2, n)
@@ -60,7 +69,9 @@ def evaluate(model, n: int = 50, t: float = 1.0, n_terms: int = 4):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train the heat-equation PINN.")
+    parser = argparse.ArgumentParser(
+        description="Train the heat-equation PINN.",
+    )
     parser.add_argument("--epochs", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=1e-2)
     parser.add_argument("--seed", type=int, default=0)

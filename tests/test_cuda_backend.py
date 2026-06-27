@@ -6,8 +6,8 @@ full autograd path (forward + gradients) is checked end-to-end on the GPU.
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
+import numpy as np
 
 from pinn import backend
 from pinn.backend import cpu
@@ -33,16 +33,40 @@ def test_elementwise_and_matmul_match_cpu(cuda_backend):
 
     cases = {
         "add": (cuda_backend.to_numpy(cuda_backend.add(da, db)), cpu.add(a, b)),
-        "broadcast_add": (cuda_backend.to_numpy(cuda_backend.add(da, dbias)), cpu.add(a, bias)),
+        "broadcast_add": (
+            cuda_backend.to_numpy(cuda_backend.add(da, dbias)),
+            cpu.add(a, bias),
+        ),
         "mul": (cuda_backend.to_numpy(cuda_backend.mul(da, db)), cpu.mul(a, b)),
         "sin": (cuda_backend.to_numpy(cuda_backend.sin(da)), cpu.sin(a)),
-        "sigmoid": (cuda_backend.to_numpy(cuda_backend.sigmoid(da)), cpu.sigmoid(a)),
-        "pow": (cuda_backend.to_numpy(cuda_backend.power(da, 3.0)), cpu.power(a, 3.0)),
-        "matmul": (cuda_backend.to_numpy(cuda_backend.matmul(da, dw)), cpu.matmul(a, w)),
-        "transpose": (cuda_backend.to_numpy(cuda_backend.transpose(da)), cpu.transpose(a)),
-        "sum_all": (cuda_backend.to_numpy(cuda_backend.sum_all(da)), cpu.sum_all(a)),
-        "sum0": (cuda_backend.to_numpy(cuda_backend.sum_axis(da, 0)), cpu.sum_axis(a, 0)),
-        "sum1": (cuda_backend.to_numpy(cuda_backend.sum_axis(da, 1)), cpu.sum_axis(a, 1)),
+        "sigmoid": (
+            cuda_backend.to_numpy(cuda_backend.sigmoid(da)),
+            cpu.sigmoid(a),
+        ),
+        "pow": (
+            cuda_backend.to_numpy(cuda_backend.power(da, 3.0)),
+            cpu.power(a, 3.0),
+        ),
+        "matmul": (
+            cuda_backend.to_numpy(cuda_backend.matmul(da, dw)),
+            cpu.matmul(a, w),
+        ),
+        "transpose": (
+            cuda_backend.to_numpy(cuda_backend.transpose(da)),
+            cpu.transpose(a),
+        ),
+        "sum_all": (
+            cuda_backend.to_numpy(cuda_backend.sum_all(da)),
+            cpu.sum_all(a),
+        ),
+        "sum0": (
+            cuda_backend.to_numpy(cuda_backend.sum_axis(da, 0)),
+            cpu.sum_axis(a, 0),
+        ),
+        "sum1": (
+            cuda_backend.to_numpy(cuda_backend.sum_axis(da, 1)),
+            cpu.sum_axis(a, 1),
+        ),
     }
     for label, (got, want) in cases.items():
         assert np.allclose(got, want, atol=1e-4), label
@@ -60,7 +84,7 @@ def test_autograd_on_gpu(cuda_backend):
 
 
 def test_cuda_backend_allocates_from_pool_and_releases(cuda_backend):
-    """The CUDA backend draws device memory from the pool and returns it on GC."""
+    """CUDA backend draws device memory from the pool, returns it on GC."""
     import gc
 
     from pinn.core.tensor import Tensor

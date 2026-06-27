@@ -1,0 +1,8 @@
+# A `train` option — must satisfy TrainConfig in config_schema.py.
+epochs: 2000
+lr: 1.0e-2
+hidden: 32
+n_pde: 200
+n_bc: 50
+seed: 0
+log_every: 100

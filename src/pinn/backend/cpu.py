@@ -22,6 +22,8 @@ import weakref
 
 import numpy as np
 
+from typing import Any
+
 from pinn.backend.memory import MemoryManager
 
 DTYPE = np.float32
@@ -42,7 +44,7 @@ def pool() -> MemoryManager:
     return _pool
 
 
-def empty(shape) -> np.ndarray:
+def empty(shape: tuple[int, ...]) -> np.ndarray:
     """Allocate an uninitialized 2-D array as a view into the pool buffer."""
     rows, cols = shape
     size = rows * cols
@@ -53,9 +55,12 @@ def empty(shape) -> np.ndarray:
     return view
 
 
-# --- array creation ---------------------------------------------------------
+########################################
+#            array creation            #
+########################################
 
-def coerce(value) -> np.ndarray:
+
+def coerce(value: Any) -> np.ndarray:
     """Coerce a scalar / 1-D / 2-D value into a plain (unpooled) 2-D float32
     NumPy array. Shared with the CUDA backend for host-to-device copies."""
     if isinstance(value, (int | float)):
@@ -70,7 +75,7 @@ def coerce(value) -> np.ndarray:
     raise ValueError(f"expected <=2 dims, got shape {arr.shape}")
 
 
-def asarray(value) -> np.ndarray:
+def asarray(value: Any) -> np.ndarray:
     """Coerce a scalar / 1-D / 2-D value into a pooled 2-D float32 array."""
     arr = coerce(value)
     out = empty(arr.shape)
@@ -78,13 +83,13 @@ def asarray(value) -> np.ndarray:
     return out
 
 
-def full(shape, value) -> np.ndarray:
+def full(shape: tuple[int, ...], value: float) -> np.ndarray:
     out = empty(shape)
     out[...] = value
     return out
 
 
-def zeros(shape) -> np.ndarray:
+def zeros(shape: tuple[int, ...]) -> np.ndarray:
     return full(shape, 0.0)
 
 
@@ -92,63 +97,66 @@ def to_numpy(a: np.ndarray) -> np.ndarray:
     return a.astype(np.float64)  # copy out of the pool
 
 
-# --- elementwise (NumPy broadcasting) ---------------------------------------
+########################################
+#             elementwise              #
+########################################
 
-def add(a, b):
+
+def add(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     out = empty(np.broadcast_shapes(a.shape, b.shape))
     np.add(a, b, out=out)
     return out
 
 
-def mul(a, b):
+def mul(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     out = empty(np.broadcast_shapes(a.shape, b.shape))
     np.multiply(a, b, out=out)
     return out
 
 
-def div(a, b):
+def div(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     out = empty(np.broadcast_shapes(a.shape, b.shape))
     np.divide(a, b, out=out)
     return out
 
 
-def power(a, b):
+def power(a: np.ndarray, b: float) -> np.ndarray:
     out = empty(a.shape)
     np.power(a, DTYPE(b), out=out)
     return out
 
 
-def neg(a):
+def neg(a: np.ndarray) -> np.ndarray:
     out = empty(a.shape)
     np.negative(a, out=out)
     return out
 
 
-def sin(a):
+def sin(a: np.ndarray) -> np.ndarray:
     out = empty(a.shape)
     np.sin(a, out=out)
     return out
 
 
-def cos(a):
+def cos(a: np.ndarray) -> np.ndarray:
     out = empty(a.shape)
     np.cos(a, out=out)
     return out
 
 
-def log(a):
+def log(a: np.ndarray) -> np.ndarray:
     out = empty(a.shape)
     np.log(a, out=out)
     return out
 
 
-def exp(a):
+def exp(a: np.ndarray) -> np.ndarray:
     out = empty(a.shape)
     np.exp(a, out=out)
     return out
 
 
-def sigmoid(a):
+def sigmoid(a: np.ndarray) -> np.ndarray:
     out = empty(a.shape)
     np.negative(a, out=out)
     np.exp(out, out=out)
@@ -157,27 +165,30 @@ def sigmoid(a):
     return out
 
 
-# --- linear algebra / reductions --------------------------------------------
+########################################
+#     linear algebra / reductions      #
+########################################
 
-def matmul(a, b):
+
+def matmul(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     out = empty((a.shape[0], b.shape[1]))
     np.matmul(a, b, out=out)
     return out
 
 
-def transpose(a):
+def transpose(a: np.ndarray) -> np.ndarray:
     out = empty((a.shape[1], a.shape[0]))
     out[...] = a.T
     return out
 
 
-def sum_all(a):
+def sum_all(a: np.ndarray) -> np.ndarray:
     out = empty((1, 1))
     out[0, 0] = a.sum()
     return out
 
 
-def sum_axis(a, axis):
+def sum_axis(a: np.ndarray, axis: int) -> np.ndarray:
     if axis == 0:
         out = empty((1, a.shape[1]))
     elif axis == 1:

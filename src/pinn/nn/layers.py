@@ -12,11 +12,17 @@ from pinn.core.tensor import Tensor
 
 
 class Linear:
-    def __init__(self, in_features: int, out_features: int, rng: np.random.Generator | None = None):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        rng: np.random.Generator | None = None,
+    ):
         rng = rng or np.random.default_rng()
         scale = (1.0 / in_features) ** 0.5
         self.weight = Tensor(
-            rng.standard_normal((in_features, out_features)) * scale, requires_grad=True
+            rng.standard_normal((in_features, out_features)) * scale,
+            requires_grad=True,
         )
         self.bias = Tensor(np.zeros((1, out_features)), requires_grad=True)
 
@@ -49,7 +55,7 @@ class MLP:
         rng: np.random.Generator | None = None,
     ):
         rng = rng or np.random.default_rng()
-        self.layers = [
+        self.layers: list[Linear | Sigmoid] = [
             Linear(in_features, hidden, rng),
             Sigmoid(),
             Linear(hidden, hidden, rng),

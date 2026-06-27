@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from pinn.core.tensor import grad
+from conftest import stage2
+
 from pinn.nn import MLP, Adam
+from pinn.core.tensor import grad
 from pinn.pde.heat import HeatPINN
-from pinn.train import TrainConfig, evaluate, train
+from pinn.train import train, evaluate, TrainConfig
 
 
 def test_gradients_reach_all_parameters():
@@ -36,6 +38,7 @@ def test_training_reduces_loss():
     assert last < 0.5 * first
 
 
+@stage2
 def test_converges_to_analytic_slow():
     """Train long enough that the PINN approximates the analytic solution."""
     cfg = TrainConfig(epochs=800, lr=1e-2, seed=0)

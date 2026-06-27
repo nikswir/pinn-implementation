@@ -31,7 +31,7 @@ class Adam:
         self.m = [np.zeros_like(p.data) for p in self.params]
         self.v = [np.zeros_like(p.data) for p in self.params]
 
-    def step(self, grads: list[Tensor]) -> None:
+    def step(self, grads: list[Tensor | None]) -> None:
         self.t += 1
         bc1 = 1.0 - self.b1**self.t
         bc2 = 1.0 - self.b2**self.t

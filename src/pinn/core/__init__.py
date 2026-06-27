@@ -1,5 +1,5 @@
 """Core autograd engine."""
 
-from pinn.core.tensor import Tensor, grad
+from pinn.core.tensor import grad, Tensor
 
-__all__ = ["Tensor", "grad"]
+__all__ = ["grad", "Tensor"]

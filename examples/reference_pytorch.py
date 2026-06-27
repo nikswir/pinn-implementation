@@ -6,8 +6,8 @@ exists for two reasons — to cross-check that the hand-written solution converg
 to the same place, and to make the comparison in the report concrete.
 
 Run:
-    poetry install --extras reference
-    poetry run python examples/reference_pytorch.py
+    uv sync --extra reference
+    uv run python examples/reference_pytorch.py
 """
 
 from __future__ import annotations
@@ -21,7 +21,8 @@ try:
     import torch.nn as nn
 except ImportError as exc:  # pragma: no cover - optional dependency
     raise SystemExit(
-        "This example needs PyTorch. Install it with:\n" "    poetry install --extras reference"
+        "This example needs PyTorch. Install it with:\n"
+        "    uv sync --extra reference",
     ) from exc
 
 from pinn.pde.analytic import u_exact
@@ -86,7 +87,10 @@ def dirichlet_loss(model, *, y, n=50):
 
 
 def initial_loss(model, n=50):
-    xyt = torch.cat([torch.rand(n, 1), torch.rand(n, 1) * PI_2, torch.zeros(n, 1)], dim=1)
+    xyt = torch.cat(
+        [torch.rand(n, 1), torch.rand(n, 1) * PI_2, torch.zeros(n, 1)],
+        dim=1,
+    )
     return (model(xyt) ** 2).mean()
 
 
@@ -118,12 +122,14 @@ def main(epochs: int = 2000, lr: float = 1e-2, seed: int = 0):
     ys = np.linspace(0, PI_2, n)
     X, Y = np.meshgrid(xs, ys)
     pts = torch.tensor(
-        np.stack([X.ravel(), Y.ravel(), np.ones(X.size)], axis=1), dtype=torch.float32
+        np.stack([X.ravel(), Y.ravel(), np.ones(X.size)], axis=1),
+        dtype=torch.float32,
     )
     with torch.no_grad():
         u_pred = model(pts).numpy().reshape(X.shape)
     u_ref = u_exact(X, Y, 1.0)
-    print(f"max abs error vs analytic at t=1.0: {np.abs(u_pred - u_ref).max():.4f}")
+    err = np.abs(u_pred - u_ref).max()
+    print(f"max abs error vs analytic at t=1.0: {err:.4f}")
 
 
 if __name__ == "__main__":

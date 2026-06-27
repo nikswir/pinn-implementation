@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
+    # Skip docs-only pushes; PRs still run the full suite unconditionally.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "assets/**"
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   test:
@@ -12,21 +17,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
+          enable-cache: true
 
-      - name: Install Poetry
-        run: pipx install poetry
+      - name: Verify lockfile is in sync
+        run: uv lock --check
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync
 
-      - name: Lint and Format (ruff)
-        run: |
-          poetry run ruff check src/ tests/
-          poetry run ruff format --check src/ tests/
+      - name: Lint, format, type-check (pre-commit)
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
       - name: Test (pytest, CPU)
-        run: poetry run pytest -q
+        run: uv run pytest -q

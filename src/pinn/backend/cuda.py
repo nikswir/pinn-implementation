@@ -1,12 +1,16 @@
-"""CUDA compute backend (Numba kernels) backed by the pooled allocator.
+"""CUDA compute backend (Numba kernels) over one flat device buffer.
 
-Implements the same primitive surface as :mod:`pinn.backend.cpu`, but every
-operation launches a hand-written kernel from :mod:`pinn.backend.kernels` and
-returns a 2-D float32 *device* array. Like the CPU backend, each result is a
-slice of one big device buffer handed out by
-:class:`~pinn.backend.memory.MemoryManager` and returned to the pool when the
-array is garbage-collected, so a per-tensor device allocation is never paid in
-the training loop. The autograd ``Tensor`` is unchanged.
+A single device buffer (the pool) holds every tensor as a contiguous slice. An
+array is just a lightweight descriptor :class:`DeviceArray` = ``(offset, rows,
+cols)`` into that buffer; there is no per-tensor device allocation and no 2-D
+device-array type. Each operation launches a hand-written kernel from
+:mod:`pinn.backend.kernels` that addresses the buffer flatly with
+``BUF[start + i * cols + j]`` — the same model as a CUDA C++ ``float*`` or a
+PyTorch storage/offset/stride tensor.
+
+The descriptor's slice is returned to the pool when the descriptor is
+garbage-collected (``weakref.finalize``). The autograd ``Tensor`` is unchanged:
+it only reads ``.shape`` and passes ``data`` back to these primitives.
 
 Imported lazily (only when ``backend.use("cuda")`` is called), so a GPU is never
 required just to import the package.
@@ -19,8 +23,8 @@ import weakref
 import numpy as np
 from numba import cuda, float32
 
-from . import cpu, kernels
-from .memory import MemoryManager
+from pinn.backend import cpu, kernels
+from pinn.backend.memory import MemoryManager
 
 DTYPE = np.float32
 TPB = (16, 16)
@@ -32,6 +36,25 @@ POOL_CAPACITY = 1 << 26
 _pool: MemoryManager | None = None
 
 
+class DeviceArray:
+    """A view into the pool buffer: a start offset plus its 2-D shape."""
+
+    __slots__ = ("offset", "rows", "cols")
+
+    def __init__(self, offset: int, rows: int, cols: int):
+        self.offset = offset
+        self.rows = rows
+        self.cols = cols
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return (self.rows, self.cols)
+
+    @property
+    def size(self) -> int:
+        return self.rows * self.cols
+
+
 def pool() -> MemoryManager:
     """The lazily-created device allocation pool for this backend."""
     global _pool
@@ -41,7 +64,10 @@ def pool() -> MemoryManager:
     return _pool
 
 
-# --- launch configuration ---------------------------------------------------
+########################################
+#         launch configuration         #
+########################################
+
 
 def _grid(rows: int, cols: int):
     bx = (rows + TPB[0] - 1) // TPB[0]
@@ -49,66 +75,90 @@ def _grid(rows: int, cols: int):
     return (bx, by), TPB
 
 
-def empty(shape):
-    """Allocate an uninitialized 2-D device array as a view into the pool."""
+def empty(shape) -> DeviceArray:
+    """Reserve an uninitialized slice of the pool and describe it."""
     rows, cols = shape
     size = rows * cols
     p = pool()
     offset = p.allocate(size)
-    view = p.buffer[offset : offset + size].reshape(rows, cols)
-    weakref.finalize(view, p.free, offset, size)
-    return view
+    arr = DeviceArray(offset, rows, cols)
+    weakref.finalize(arr, p.free, offset, size)
+    return arr
 
 
-# --- array creation ---------------------------------------------------------
+########################################
+#            array creation            #
+########################################
 
-def asarray(value):
-    if cuda.is_cuda_array(value):
+
+def asarray(value) -> DeviceArray:
+    if isinstance(value, DeviceArray):
         return value
     host = cpu.coerce(value)
     out = empty(host.shape)
-    out.copy_to_device(np.ascontiguousarray(host))
+    flat = np.ascontiguousarray(host).reshape(-1)
+    pool().buffer[out.offset : out.offset + out.size].copy_to_device(flat)
     return out
 
 
-def full(shape, value):
+def full(shape, value) -> DeviceArray:
     out = empty(shape)
-    grid, block = _grid(shape[0], shape[1])
-    kernels.fill_kernel[grid, block](out, float32(value))
+    grid, block = _grid(out.rows, out.cols)
+    kernels.fill_kernel[grid, block](
+        pool().buffer,
+        out.offset,
+        out.rows,
+        out.cols,
+        float32(value),
+    )
     return out
 
 
-def zeros(shape):
+def zeros(shape) -> DeviceArray:
     return full(shape, 0.0)
 
 
-def to_numpy(a) -> np.ndarray:
-    host = a.copy_to_host() if cuda.is_cuda_array(a) else np.asarray(a)
-    return host.astype(np.float64)
+def to_numpy(a: DeviceArray) -> np.ndarray:
+    flat = pool().buffer[a.offset : a.offset + a.size].copy_to_host()
+    return flat.reshape(a.rows, a.cols).astype(np.float64)
 
 
-# --- helpers ----------------------------------------------------------------
+########################################
+#               helpers                #
+########################################
 
-def _broadcast_shape(a, b):
-    return (max(a.shape[0], b.shape[0]), max(a.shape[1], b.shape[1]))
 
-
-def _unary(kernel, a):
+def _unary(kernel, a: DeviceArray) -> DeviceArray:
     out = empty(a.shape)
-    grid, block = _grid(a.shape[0], a.shape[1])
-    kernel[grid, block](out, a)
+    grid, block = _grid(a.rows, a.cols)
+    kernel[grid, block](pool().buffer, a.offset, a.rows, a.cols, out.offset)
     return out
 
 
-def _binary(kernel, a, b):
-    shape = _broadcast_shape(a, b)
-    out = empty(shape)
-    grid, block = _grid(shape[0], shape[1])
-    kernel[grid, block](out, a, b)
+def _binary(kernel, a: DeviceArray, b: DeviceArray) -> DeviceArray:
+    rows = max(a.rows, b.rows)
+    cols = max(a.cols, b.cols)
+    out = empty((rows, cols))
+    grid, block = _grid(rows, cols)
+    kernel[grid, block](
+        pool().buffer,
+        a.offset,
+        a.rows,
+        a.cols,
+        b.offset,
+        b.rows,
+        b.cols,
+        out.offset,
+        rows,
+        cols,
+    )
     return out
 
 
-# --- elementwise ------------------------------------------------------------
+########################################
+#             elementwise              #
+########################################
+
 
 def add(a, b):
     return _binary(kernels.add_kernel, a, b)
@@ -124,8 +174,15 @@ def div(a, b):
 
 def power(a, b):
     out = empty(a.shape)
-    grid, block = _grid(a.shape[0], a.shape[1])
-    kernels.pow_scalar_kernel[grid, block](out, a, DTYPE(b))
+    grid, block = _grid(a.rows, a.cols)
+    kernels.pow_scalar_kernel[grid, block](
+        pool().buffer,
+        a.offset,
+        a.rows,
+        a.cols,
+        out.offset,
+        DTYPE(b),
+    )
     return out
 
 
@@ -153,37 +210,65 @@ def sigmoid(a):
     return _unary(kernels.sigmoid_kernel, a)
 
 
-# --- linear algebra / reductions --------------------------------------------
+########################################
+#     linear algebra / reductions      #
+########################################
+
 
 def matmul(a, b):
-    m, n = a.shape[0], b.shape[1]
-    out = empty((m, n))
-    grid, block = _grid(m, n)
-    kernels.matmul_kernel[grid, block](out, a, b)
+    out = empty((a.rows, b.cols))
+    grid, block = _grid(a.rows, b.cols)
+    kernels.matmul_kernel[grid, block](
+        pool().buffer,
+        a.offset,
+        a.rows,
+        a.cols,
+        b.offset,
+        b.rows,
+        b.cols,
+        out.offset,
+    )
     return out
 
 
 def transpose(a):
-    out = empty((a.shape[1], a.shape[0]))
-    grid, block = _grid(a.shape[0], a.shape[1])
-    kernels.transpose_kernel[grid, block](out, a)
+    out = empty((a.cols, a.rows))
+    grid, block = _grid(a.rows, a.cols)
+    kernels.transpose_kernel[grid, block](
+        pool().buffer,
+        a.offset,
+        a.rows,
+        a.cols,
+        out.offset,
+    )
     return out
 
 
 def sum_all(a):
     out = empty((1, 1))
-    kernels.sum_all_kernel[1, kernels.RED_TPB](out, a)
+    kernels.sum_all_kernel[1, kernels.RED_TPB](
+        pool().buffer,
+        a.offset,
+        a.size,
+        out.offset,
+    )
     return out
 
 
 def sum_axis(a, axis):
     if axis == 0:
-        out = empty((1, a.shape[1]))
+        out = empty((1, a.cols))
         kernel = kernels.sum_axis0_kernel
     elif axis == 1:
-        out = empty((a.shape[0], 1))
+        out = empty((a.rows, 1))
         kernel = kernels.sum_axis1_kernel
     else:
         raise ValueError(f"unsupported sum axis {axis!r}")
-    kernel[1, kernels.RED_TPB](out, a)
+    kernel[1, kernels.RED_TPB](
+        pool().buffer,
+        a.offset,
+        a.rows,
+        a.cols,
+        out.offset,
+    )
     return out

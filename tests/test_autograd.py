@@ -7,10 +7,10 @@ too.
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
+import numpy as np
 
-from pinn.core.tensor import Tensor, grad
+from pinn.core.tensor import grad, Tensor
 
 
 def fd_grad(f, x: np.ndarray, eps: float = 1e-3) -> np.ndarray:

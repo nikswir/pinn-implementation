@@ -5,9 +5,27 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 
-# Poetry
-# (lockfile IS committed; do not ignore poetry.lock)
+# Coverage & test artifacts
+.coverage
+coverage.json
+htmlcov/
+
+# Mutation testing
+mutants/
+.mutmut-cache
+
+# Hydra / run outputs
+outputs/
+multirun/
+html/
+
+# Model checkpoints / weights
+*.ckpt
+*.pt
+*.pth
+wandb/
 
 # Notebooks
 .ipynb_checkpoints/

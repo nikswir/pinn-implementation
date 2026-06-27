@@ -42,7 +42,7 @@ to a **maximum absolute error of ≈0.01** at $t=1$.
 </table>
 
 
-Regenerate with `poetry run python scripts/make_figures.py`.
+Regenerate with `uv run python scripts/make_figures.py`.
 
 ## How it works
 
@@ -64,12 +64,12 @@ Four layers of abstraction, each built from the one below:
 ## Quickstart
 
 ```bash
-poetry install                 # core (CPU) deps
-poetry run pytest              # full suite runs on CPU, no GPU required
-poetry run python -m pinn.train --epochs 2000
+uv sync                        # core (CPU) deps
+uv run pytest                  # full suite runs on CPU, no GPU required
+uv run python -m pinn.train --epochs 2000
 ```
 
-Optional extras: `--extras viz` (figures), `--extras reference` (PyTorch
+Optional extras: `--extra viz` (figures), `--extra reference` (PyTorch
 baseline).
 
 Switch backend in code:
@@ -101,6 +101,11 @@ examples/           PyTorch reference implementation
 scripts/            figure generation
 docs/report/        LaTeX report (RU + EN translation)
 ```
+
+## Development
+
+The engineering workflow — toolchain (uv), the pre-commit gate, two-stage tests,
+config (Hydra), and code-style rules — is documented in [AGENTS.md](AGENTS.md).
 
 ## License
 

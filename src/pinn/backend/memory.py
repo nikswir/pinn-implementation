@@ -22,22 +22,28 @@ import bisect
 
 import numpy as np
 
+from typing import Any
+
 DTYPE = np.float32
 
 
 class MemoryManager:
-    def __init__(self, capacity: int, buffer=None):
+    def __init__(self, capacity: int, buffer: Any = None):
         # The allocator only tracks offsets; the backing storage is provided
         # externally (a device buffer for the CUDA backend) or defaults to a
         # NumPy buffer for the CPU backend.
         self.capacity = capacity
-        self.buffer = np.zeros(capacity, dtype=DTYPE) if buffer is None else buffer
+        self.buffer = (
+            np.zeros(capacity, dtype=DTYPE) if buffer is None else buffer
+        )
         self.gap_at_start: dict[int, int] = {0: capacity}
         self.gap_at_end: dict[int, int] = {capacity: capacity}
         self.gaps_by_size: list[tuple[int, int]] = [(capacity, 0)]
         self.used = 0
 
-    # -- allocation -----------------------------------------------------------
+    ########################################
+    #              allocation              #
+    ########################################
 
     def allocate(self, size: int) -> int:
         """Reserve ``size`` contiguous slots, returning the start index."""
@@ -54,13 +60,19 @@ class MemoryManager:
         if remainder:
             self.gap_at_start[start + size] = remainder
             self.gap_at_end[start + gap_size] = remainder
-            j = bisect.bisect_left(self.gaps_by_size, remainder, key=lambda g: g[0])
+            j = bisect.bisect_left(
+                self.gaps_by_size,
+                remainder,
+                key=lambda g: g[0],
+            )
             self.gaps_by_size.insert(j, (remainder, start + size))
         else:
             del self.gap_at_end[start + gap_size]
         return start
 
-    # -- freeing (with coalescing) -------------------------------------------
+    ########################################
+    #         freeing & coalescing         #
+    ########################################
 
     def free(self, start: int, size: int) -> None:
         """Release a slice, merging with adjacent free gaps."""
@@ -86,13 +98,15 @@ class MemoryManager:
         self.gaps_by_size.insert(j, (size, start))
 
     def _remove_gap(self, size: int, start: int) -> None:
-        """Delete the gap identified by ``(size, start)`` from the sorted list."""
+        """Delete the gap ``(size, start)`` from the sorted list."""
         i = bisect.bisect_left(self.gaps_by_size, size, key=lambda g: g[0])
         while self.gaps_by_size[i][1] != start:
             i += 1
         del self.gaps_by_size[i]
 
-    # -- diagnostics ----------------------------------------------------------
+    ########################################
+    #             diagnostics              #
+    ########################################
 
     @property
     def fill_fraction(self) -> float:

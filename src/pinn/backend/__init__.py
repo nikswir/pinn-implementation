@@ -4,30 +4,32 @@ The autograd ``Tensor`` is backend-agnostic: it builds the computation graph and
 delegates every array primitive to the *active* backend. Two backends exist:
 
 - ``cpu``  — pure NumPy, always available (default, used by the test suite).
-- ``cuda`` — hand-written Numba/CUDA kernels, used when an NVIDIA GPU is present.
+- ``cuda`` — hand-written Numba/CUDA kernels, used when a GPU is present.
 
 Switch with :func:`use`; query with :func:`active`.
 """
 
 from __future__ import annotations
 
-from . import cpu
+from types import ModuleType
 
-_active = cpu
+from pinn.backend import cpu
+
+_active: ModuleType = cpu
 
 
-def active():
+def active() -> ModuleType:
     """Return the currently active backend module."""
     return _active
 
 
-def use(name: str):
+def use(name: str) -> ModuleType:
     """Activate a backend by name (``"cpu"`` or ``"cuda"``)."""
     global _active
     if name == "cpu":
         _active = cpu
     elif name == "cuda":
-        from . import cuda  # imported lazily: requires numba.cuda + a GPU
+        from pinn.backend import cuda  # lazy: needs numba.cuda + a GPU
 
         _active = cuda
     else:
@@ -40,6 +42,6 @@ def cuda_available() -> bool:
     try:
         from numba import cuda as _c
 
-        return _c.is_available()
+        return bool(_c.is_available())
     except Exception:
         return False
