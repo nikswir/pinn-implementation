@@ -229,6 +229,9 @@ class Tensor:
         )
         if self.requires_grad:
             # d/dx sigma = sigma * (1 - sigma); reuse the forward value `out`.
+            # Capturing `out` in its own backward makes the node part of a
+            # reference cycle, so its pooled buffer is reclaimed by CPython's
+            # cyclic GC rather than by refcount — keep the default GC enabled.
             out._parents.append((self, lambda g: g * (out * (1.0 - out))))
         return out
 
@@ -245,8 +248,12 @@ class Tensor:
             raise ValueError(f"unsupported sum axis {axis!r}")
         out = Tensor._wrap(data, parents=[], requires_grad=self.requires_grad)
         if self.requires_grad:
-            ones = Tensor(_b().full(self.shape, 1.0), requires_grad=False)
-            out._parents.append((self, lambda g: g * ones))
+            # Broadcast the upstream grad back to the summed shape. The `ones`
+            # buffer is built lazily inside the closure (only when backward
+            # runs), not eagerly at forward time, so nothing is held alive.
+            out._parents.append(
+                (self, lambda g: g * Tensor(_b().full(self.shape, 1.0))),
+            )
         return out
 
     ########################################
@@ -296,7 +303,8 @@ class Tensor:
                 prev = grads.get(id(parent))
                 grads[id(parent)] = contrib if prev is None else prev + contrib
             if not t._parents and t.requires_grad:  # leaf
-                t.grad = grads[id(t)].detach()
+                contrib = grads[id(t)].detach()
+                t.grad = contrib if t.grad is None else t.grad + contrib
 
 
 ########################################
