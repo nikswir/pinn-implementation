@@ -35,6 +35,13 @@ def test_name_ladder_break_flagged(tmp_path: Path) -> None:
     assert _check(tmp_path, "from x import bbbb, a\n") is True
 
 
+def test_multiline_import_inside_block_flagged(tmp_path: Path) -> None:
+    # A parenthesised multi-line import must be set off by a blank line; inside
+    # a multi-import block (no blank around it) it is flagged (code-style §6).
+    text = "import ast\nfrom x import (\n    a,\n    bb,\n)\n"
+    assert _check(tmp_path, text) is True
+
+
 def test_first_party_roots_discovers_local_packages(
     tmp_path: Path,
 ) -> None:

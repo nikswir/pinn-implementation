@@ -157,6 +157,18 @@ def test_backward_populates_leaf_grad_only(rng):
     assert y.grad is None  # non-leaf must not receive .grad
 
 
+def test_backward_accumulates_grad_across_calls(rng):
+    """Two ``backward()`` calls sum into ``.grad`` (PyTorch-style accumulation),
+    rather than the second overwriting the first."""
+    x = rng.standard_normal((2, 3)).astype(np.float32)
+    t = Tensor(x, requires_grad=True)
+    (t * t).sum().backward()  # d/dt sum(t^2) = 2t
+    once = t.grad.numpy().copy()
+    (t * t).sum().backward()  # accumulate -> 4t
+    assert np.allclose(once, 2.0 * x, atol=1e-4)
+    assert np.allclose(t.grad.numpy(), 2.0 * once, atol=1e-4)
+
+
 def test_default_tensor_does_not_require_grad():
     t = Tensor([[1.0, 2.0]])
     assert t.requires_grad is False

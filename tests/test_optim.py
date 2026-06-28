@@ -7,6 +7,7 @@ These compare one and several steps against a hand-rolled canonical Adam.
 
 from __future__ import annotations
 
+import pytest
 import numpy as np
 
 from pinn.nn import Adam
@@ -89,3 +90,13 @@ def test_none_grad_leaves_its_param_untouched():
     opt.step([None, Tensor([[0.5]])])
     assert np.array_equal(p0.numpy(), before0)  # None grad: unchanged
     assert not np.array_equal(p1.numpy(), [[4.0]])  # real grad: stepped
+
+
+def test_rejects_non_numpy_backed_param():
+    """Adam is CPU/NumPy-only: a param whose ``.data`` is not an ndarray (as a
+    CUDA ``DeviceArray`` would be) is rejected up front, not silently
+    corrupted into a 0-d object array."""
+    p = Tensor([[1.0]], requires_grad=True)
+    p.data = object()  # a device descriptor stand-in (no numpy interface)
+    with pytest.raises(TypeError, match="CPU/NumPy backend only"):
+        Adam([p])
