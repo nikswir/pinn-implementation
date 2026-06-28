@@ -11,7 +11,7 @@ import math
 
 import numpy as np
 
-from pinn.pde.analytic import u_exact
+from pinn.pde.analytic import u_exact, u_exact_scalar
 
 PI_2 = math.pi / 2.0
 N_TERMS = 12
@@ -49,6 +49,18 @@ def test_neumann_conditions():
     x = rng.uniform(0.1, 0.9, 10)
     uy = (_u(x, PI_2 + h, t) - _u(x, PI_2 - h, t)) / (2 * h)
     assert np.abs(uy).max() < 1e-2
+
+
+def test_scalar_matches_vectorized():
+    """``u_exact_scalar`` (per-point) agrees with the vectorized ``u_exact``."""
+    rng = np.random.default_rng(7)
+    for _ in range(10):
+        x = float(rng.uniform(0, 1))
+        y = float(rng.uniform(0, PI_2))
+        t = float(rng.uniform(0, 1))
+        got = u_exact_scalar(x, y, t)
+        want = float(u_exact(x, y, t))
+        assert np.isclose(got, want, atol=1e-9)
 
 
 def test_pde_residual_is_small():
