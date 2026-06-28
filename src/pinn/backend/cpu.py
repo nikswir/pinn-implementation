@@ -14,6 +14,11 @@ tensor; here it also means the allocator is the live allocation path, not a
 showcase.
 
 All arrays are kept 2-D and ``float32`` to mirror the on-device representation.
+
+The backend exposes a complete elementwise set (``div``, ``neg``, ``exp``, …)
+for parity with the CUDA backend, even though the autograd engine reaches some
+of them indirectly — e.g. division is built from a reciprocal power so its
+gradient stays higher-order differentiable, rather than calling ``div``.
 """
 
 from __future__ import annotations
