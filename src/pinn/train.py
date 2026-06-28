@@ -72,12 +72,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Train the heat-equation PINN.",
     )
-    parser.add_argument("--epochs", type=int, default=2000)
-    parser.add_argument("--lr", type=float, default=1e-2)
-    parser.add_argument("--seed", type=int, default=0)
+
+    # ── One flag per TrainConfig field, defaulting to the dataclass default ──
+    d = TrainConfig()
+    parser.add_argument("--lr", type=float, default=d.lr)
+    parser.add_argument("--seed", type=int, default=d.seed)
+    parser.add_argument("--n-bc", type=int, default=d.n_bc)
+    parser.add_argument("--n-pde", type=int, default=d.n_pde)
+    parser.add_argument("--hidden", type=int, default=d.hidden)
+    parser.add_argument("--epochs", type=int, default=d.epochs)
+    parser.add_argument("--log-every", type=int, default=d.log_every)
     args = parser.parse_args()
 
-    cfg = TrainConfig(epochs=args.epochs, lr=args.lr, seed=args.seed)
+    cfg = TrainConfig(
+        epochs=args.epochs,
+        lr=args.lr,
+        hidden=args.hidden,
+        n_pde=args.n_pde,
+        n_bc=args.n_bc,
+        seed=args.seed,
+        log_every=args.log_every,
+    )
     model, _ = train(cfg)
     *_, max_err = evaluate(model, t=1.0)
     print(f"max abs error vs analytic at t=1.0: {max_err:.4f}")
