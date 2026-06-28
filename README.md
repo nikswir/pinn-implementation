@@ -14,9 +14,13 @@ from its residual alone.
 
 2-D heat equation with a source term:
 
-$$\frac{\partial u}{\partial t} = \Delta u + xt^2 \sin y,\quad 0<x<1,\ 0<y<\tfrac{\pi}{2},\ t>0$$
+$$
+\frac{\partial u}{\partial t} = \Delta u + xt^2 \sin y,\quad 0<x<1,\ 0<y<\tfrac{\pi}{2},\ t>0
+$$
 
-$$\frac{\partial u}{\partial x}\Big|_{x=0}=\frac{\partial u}{\partial x}\Big|_{x=1}=0,\qquad u\big|_{y=0}=0,\quad \frac{\partial u}{\partial y}\Big|_{y=\pi/2}=0,\qquad u\big|_{t=0}=0$$
+$$
+\frac{\partial u}{\partial x}\Big|_{x=0}=\frac{\partial u}{\partial x}\Big|_{x=1}=0,\qquad u\big|_{y=0}=0,\quad \frac{\partial u}{\partial y}\Big|_{y=\pi/2}=0,\qquad u\big|_{t=0}=0
+$$
 
 The network $u_\theta(x,y,t)$ is trained to minimize the mean-squared PDE
 residual plus the boundary and initial residuals — no labelled data. The result
@@ -26,7 +30,6 @@ is validated against a closed-form Fourier-series solution.
 
 Trained for 2000 epochs on CPU (≈10 s), the PINN matches the analytic solution
 to a **maximum absolute error of ≈0.01** at $t=1$.
-
 
 <table>
   <tr>
@@ -41,7 +44,6 @@ to a **maximum absolute error of ≈0.01** at $t=1$.
   </tr>
 </table>
 
-
 Regenerate with `uv run python scripts/make_figures.py`.
 
 ## How it works
@@ -49,17 +51,17 @@ Regenerate with `uv run python scripts/make_figures.py`.
 Four layers of abstraction, each built from the one below:
 
 1. **Compute backend** — array primitives (matmul, elementwise, reductions).
-  Two interchangeable implementations: pure NumPy (`backend/cpu.py`) and
+   Two interchangeable implementations: pure NumPy (`backend/cpu.py`) and
    hand-written CUDA kernels (`backend/kernels.py`, `backend/cuda.py`). The
    matmul kernel is a classic shared-memory **tiled GEMM**.
 2. **Memory allocator** (`backend/memory.py`) — a pooled best-fit allocator over
-  one flat buffer with gap coalescing, so thousands of short-lived tensors don't
+   one flat buffer with gap coalescing, so thousands of short-lived tensors don't
    each pay a device-allocation cost.
 3. **Autograd** (`core/tensor.py`) — reverse-mode AD where the backward functions
-  are themselves `Tensor` operations, so gradients stay differentiable. That is
+   are themselves `Tensor` operations, so gradients stay differentiable. That is
    what makes the **second derivatives** $u_{xx}, u_{yy}$ possible.
 4. **Model & PDE** (`nn/`, `pde/`) — Xavier-init MLP, Adam, and the
-  physics-informed loss; plus the analytic reference.
+   physics-informed loss; plus the analytic reference.
 
 ## Quickstart
 
@@ -99,7 +101,7 @@ src/pinn/train.py   training loop + evaluation
 tests/              gradient checks, allocator, analytic, convergence, CUDA parity
 examples/           PyTorch reference implementation
 scripts/            figure generation
-docs/report/        LaTeX report (RU + EN translation)
+docs/report/        LaTeX report
 ```
 
 ## Development
