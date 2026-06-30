@@ -55,4 +55,4 @@ class Adam:
             m_hat = self.m[i] / bc1
             v_hat = self.v[i] / bc2
             update = self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
-            p.data = (p.data - update).astype(np.float32, copy=False)
+            p.data = (p.data + update).astype(np.float32, copy=False)
