@@ -1,9 +1,12 @@
-"""Adam optimizer.
+"""Adam optimizer (CPU / NumPy backend only).
 
-Operates directly on the raw backend arrays behind each parameter (no graph is
-built during the update step). Implements canonical Adam: exponential moving
-averages of the gradient and its square, bias-corrected (``m_hat``, ``v_hat``),
-with ``eps`` added outside the square root (``sqrt(v_hat) + eps``).
+Operates directly on the raw NumPy arrays behind each parameter (no graph is
+built during the update step), so it runs on the CPU backend only: the CUDA
+backend stores parameters as device-side ``DeviceArray`` descriptors that NumPy
+cannot operate on, and a non-array param is rejected at construction rather than
+silently corrupted. Implements canonical Adam: exponential moving averages of
+the gradient and its square, bias-corrected (``m_hat``, ``v_hat``), with ``eps``
+added outside the square root (``sqrt(v_hat) + eps``).
 """
 
 from __future__ import annotations
@@ -23,6 +26,14 @@ class Adam:
         eps: float = 1e-8,
     ):
         self.params = list(params)
+
+        # ── CPU/NumPy backend only: reject device descriptors up front ──
+        for p in self.params:
+            if not isinstance(p.data, np.ndarray):
+                raise TypeError(
+                    "Adam runs on the CPU/NumPy backend only; got a "
+                    f"parameter backed by {type(p.data).__name__}",
+                )
         self.lr = lr
         self.b1 = beta1
         self.b2 = beta2
@@ -44,4 +55,4 @@ class Adam:
             m_hat = self.m[i] / bc1
             v_hat = self.v[i] / bc2
             update = self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
-            p.data = (p.data - update).astype(np.float32)
+            p.data = (p.data - update).astype(np.float32, copy=False)

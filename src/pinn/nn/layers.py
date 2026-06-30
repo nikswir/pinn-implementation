@@ -1,6 +1,6 @@
 """Neural-network building blocks: a linear layer, sigmoid activation, and MLP.
 
-Weights use Xavier-style initialization ``N(0, 1/in_features)``. Layers expose
+Weights use LeCun-style initialization ``N(0, 1/in_features)``. Layers expose
 :meth:`parameters` so an optimizer can collect every trainable tensor.
 """
 

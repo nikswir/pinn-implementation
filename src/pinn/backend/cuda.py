@@ -136,6 +136,9 @@ def _unary(kernel, a: DeviceArray) -> DeviceArray:
 
 
 def _binary(kernel, a: DeviceArray, b: DeviceArray) -> DeviceArray:
+    # Reject shapes NumPy would not broadcast, so the CUDA backend raises on
+    # the same inputs the CPU backend does instead of silently reading garbage.
+    np.broadcast_shapes(a.shape, b.shape)
     rows = max(a.rows, b.rows)
     cols = max(a.cols, b.cols)
     out = empty((rows, cols))
@@ -216,6 +219,10 @@ def sigmoid(a):
 
 
 def matmul(a, b):
+    if a.cols != b.rows:
+        raise ValueError(
+            f"matmul shape mismatch: {a.shape} @ {b.shape}",
+        )
     out = empty((a.rows, b.cols))
     grid, block = _grid(a.rows, b.cols)
     kernels.matmul_kernel[grid, block](

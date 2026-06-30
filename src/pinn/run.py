@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import hydra
 
+from typing import cast
 from pathlib import Path
-from omegaconf import DictConfig
+from omegaconf import OmegaConf, DictConfig
 from hydra.core.hydra_config import HydraConfig
 
 from pinn import config_schema
@@ -30,16 +31,9 @@ config_schema.register()
 
 def run(cfg: DictConfig, out_dir: Path) -> float:
     """Train the PINN from the composed config; write a summary into out_dir."""
-    # ── Bridge the Hydra config into the library API ──
-    train_cfg = TrainConfig(
-        epochs=cfg.train.epochs,
-        lr=cfg.train.lr,
-        hidden=cfg.train.hidden,
-        n_pde=cfg.train.n_pde,
-        n_bc=cfg.train.n_bc,
-        seed=cfg.train.seed,
-        log_every=cfg.train.log_every,
-    )
+    # ── The `train` group is typed AS TrainConfig (config_schema), so rebuild
+    #    the dataclass directly instead of copying field by field ──
+    train_cfg = cast(TrainConfig, OmegaConf.to_object(cfg.train))
     model, history = train(train_cfg)
     *_, max_err = evaluate(model, t=1.0)
 

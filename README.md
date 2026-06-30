@@ -60,7 +60,7 @@ Four layers of abstraction, each built from the one below:
 3. **Autograd** (`core/tensor.py`) — reverse-mode AD where the backward functions
    are themselves `Tensor` operations, so gradients stay differentiable. That is
    what makes the **second derivatives** $u_{xx}, u_{yy}$ possible.
-4. **Model & PDE** (`nn/`, `pde/`) — Xavier-init MLP, Adam, and the
+4. **Model & PDE** (`nn/`, `pde/`) — LeCun-init MLP, Adam, and the
    physics-informed loss; plus the analytic reference.
 
 ## Quickstart
@@ -101,7 +101,7 @@ src/pinn/train.py   training loop + evaluation
 tests/              gradient checks, allocator, analytic, convergence, CUDA parity
 examples/           PyTorch reference implementation
 scripts/            figure generation
-docs/report/        LaTeX report
+docs/report/        LaTeX and PDF reports
 ```
 
 ## Development
