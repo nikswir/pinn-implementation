@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write # needed to submit an approving/requesting-changes review
       issues: read
       id-token: write
     steps:
@@ -29,10 +29,24 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
+        env:
+          # gh CLI reads this; the bot identity differs from the PR author,
+          # so GitHub allows it to approve PRs you (not the bot) opened.
+          GH_TOKEN: ${{ github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # Allow the review to be submitted as a formal GitHub review.
+          claude_args: '--allowed-tools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*)"'
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} in
+            ${{ github.repository }} with /code-review:code-review.
+
+            Then submit a formal review verdict via the gh CLI:
+            - If there are NO blocking correctness bugs, approve it:
+                gh pr review ${{ github.event.pull_request.number }} --approve --body "<one-line summary>"
+            - If there ARE blocking issues, request changes instead:
+                gh pr review ${{ github.event.pull_request.number }} --request-changes --body "<what must change>"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
