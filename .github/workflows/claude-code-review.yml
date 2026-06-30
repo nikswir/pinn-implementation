@@ -17,7 +17,7 @@ jobs:
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # needed to merge the PR after approving it
       pull-requests: write # needed to submit an approving/requesting-changes review
       issues: read
       id-token: write
@@ -37,16 +37,20 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          # Allow the review to be submitted as a formal GitHub review.
-          claude_args: '--allowed-tools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*)"'
+          # Allow the review to be submitted, then auto-merged on approval.
+          claude_args: '--allowed-tools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh pr merge:*)"'
           prompt: |
             Review pull request #${{ github.event.pull_request.number }} in
             ${{ github.repository }} with /code-review:code-review.
 
             Then submit a formal review verdict via the gh CLI:
-            - If there are NO blocking correctness bugs, approve it:
+            - If there are NO blocking correctness bugs, approve it AND queue
+              the squash-merge (--auto waits for required CI checks to pass
+              before merging; the branch is deleted afterwards):
                 gh pr review ${{ github.event.pull_request.number }} --approve --body "<one-line summary>"
-            - If there ARE blocking issues, request changes instead:
+                gh pr merge ${{ github.event.pull_request.number }} --squash --auto --delete-branch
+            - If there ARE blocking issues, request changes instead and do NOT
+              merge:
                 gh pr review ${{ github.event.pull_request.number }} --request-changes --body "<what must change>"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
