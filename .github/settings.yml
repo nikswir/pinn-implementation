@@ -19,6 +19,10 @@ repository:
   allow_auto_merge: true
   delete_branch_on_merge: true
 
+collaborators:
+  - username: nikswir-claude
+    permission: push
+
 branches:
   - name: main
     protection:
